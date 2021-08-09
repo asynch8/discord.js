@@ -134,7 +134,7 @@ class RESTMethods {
     });
   }
 
-  updateMessage(message, content, { flags, embed, code, reply } = {}) {
+  updateMessage(message, content, { flags, embed, attachments, code, reply } = {}, files=null) {
     if (typeof content !== 'undefined') content = this.client.resolver.resolveString(content);
 
     if (typeof flags !== 'undefined') flags = MessageFlags.resolve(flags);
@@ -155,8 +155,8 @@ class RESTMethods {
     if (embed instanceof RichEmbed) embed = embed.toJSON();
 
     return this.rest.makeRequest('patch', Endpoints.Message(message), true, {
-      content, embed, flags,
-    }).then(data => this.client.actions.MessageUpdate.handle(data).updated);
+      content, embed, flags, attachments
+    }, files).then(data => this.client.actions.MessageUpdate.handle(data).updated);
   }
 
   deleteMessage(message) {

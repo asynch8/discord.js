@@ -435,7 +435,56 @@ class Message {
     } else if (!options) {
       options = {};
     }
-    if (options instanceof RichEmbed) options = { embed: options };
+    if (options instanceof Attachment) options = { files: [options.file] };
+    if (options instanceof RichEmbed) {
+      options = { embed: options };
+    }
+
+    if (options.embed) {
+      if (options.embed.file) {
+        if (options.files) options.files.push(options.embed.file);
+        else options.files = [options.embed.file];
+      }
+      if (options.embed.files) {
+        if (options.files) options.files = options.files.concat(options.embed.files);
+        else options.files = options.embed.files;
+      }
+    }
+
+    if (options.file) {
+      if (options.files) options.files.push(options.file);
+      else options.files = [options.file];
+    }
+
+    if (options.embed) options.embed = new RichEmbed(options.embed).toJSON();
+
+    if (options.files) {
+      for (let i = 0; i < options.files.length; i++) {
+        let file = options.files[i];
+        if (!file || typeof file === 'string' || Buffer.isBuffer(file)) file = { attachment: file };
+        if (!file.name) {
+          if (typeof file.attachment === 'string') {
+            file.name = path.basename(file.attachment);
+          } else if (file.attachment && file.attachment.path) {
+            file.name = path.basename(file.attachment.path);
+          } else if (file instanceof Attachment) {
+            file = { attachment: file.file, name: path.basename(file.file) || 'file.jpg' };
+          } else {
+            file.name = 'file.jpg';
+          }
+        } else if (file instanceof Attachment) {
+          file = file.file;
+        }
+        options.files[i] = file;
+      }
+
+      return Promise.all(options.files.map(file =>
+        this.client.resolver.resolveFile(file.attachment).then(resource => {
+          file.file = resource;
+          return file;
+        })
+      )).then(files => this.client.rest.methods.updateMessage(this, content, options, files));
+    }
     return this.client.rest.methods.updateMessage(this, content, options);
   }
 
